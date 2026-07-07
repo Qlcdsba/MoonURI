@@ -4,7 +4,7 @@
 **MoonURI**: 基于 RFC 3986 的通用 URI/URL 解析、构建、规范化与相对路径解析标准库
 
 ## 项目标识
-`competition/uri` (在发布到 mooncakes.io 时建议更改为 `<你的GitHub用户名>/uri`)
+`Qlcdsba/uri` (发布于 mooncakes.io 的模块名)
 
 ## 项目简介
 **MoonURI** 是一个完全遵循 RFC 3986 规范的 MoonBit 语言通用 URI/URL 解析、构建、规范化与相对路径解析（Relative Resolution）标准库。项目支持完整的 UTF-8 百分号编码与解码、严格的 IPv4/IPv6 主机格式校验，并提供了类似浏览器 `URLSearchParams` 的查询参数解析与构建工具。旨在为 MoonBit 异步 Web 框架、网络库及 Wasm 运行时提供高性能、高可靠、无平台依赖的 URL 解析与相对路径处理基础能力。
