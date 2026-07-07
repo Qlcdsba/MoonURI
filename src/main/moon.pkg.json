@@ -1,0 +1,6 @@
+{
+  "is-main": true,
+  "import": [
+    "competition/uri/src/lib"
+  ]
+}
