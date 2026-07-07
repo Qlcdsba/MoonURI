@@ -1,0 +1,9 @@
+{
+  "name": "competition/uri",
+  "version": "0.1.0",
+  "deps": {},
+  "readme": "README.md",
+  "repository": "https://github.com/competition/uri",
+  "license": "MIT",
+  "description": "RFC 3986 compliant URI parser, builder, resolver, and normalization library in MoonBit."
+}

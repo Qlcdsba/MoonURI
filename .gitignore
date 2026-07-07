@@ -1,0 +1,6 @@
+_build/
+check_output.txt
+*.log
+.DS_Store
+.idea/
+.vscode/
