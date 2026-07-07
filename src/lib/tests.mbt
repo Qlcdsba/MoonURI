@@ -148,3 +148,9 @@ test "URLSearchParams usage" {
   
   assert_eq(sp.to_string(), "key1=new_val&key3=val4")
 }
+
+test "URI normalization syntax tests" {
+  let uri = parse("HTTP://User%3apass@EXAMPLE.COM:80/a/b/../c?q=1%3d2#f%3da").unwrap()
+  let normalized = uri.normalize()
+  assert_eq(normalized.to_string(), "http://User%3Apass@example.com:80/a/c?q=1%3D2#f%3Da")
+}
