@@ -41,7 +41,7 @@ fn main {
       // JSON Serialization
       println("\nURI Serialization:")
       println("  Reconstructed String: " + uri.to_string())
-      println("  JSON Representation:  " + uri.to_json().to_string())
+      println("  JSON Representation:  " + uri.to_json().stringify())
     }
     Err(e) => println("Error parsing URI: " + e)
   }
@@ -86,8 +86,9 @@ fn main {
   println("\nParsed Query Parameters:")
   println("  Has 'search'? " + sp.has("search").to_string())
   println("  Get 'search': " + opt_str(sp.get("search")))
-  println("  Get all 'search': " + sp.get_all("search").to_string())
+  println("  Get all 'search': [" + sp.get_all("search").join(", ") + "]")
   println("  Get 'category': " + opt_str(sp.get("category")))
+
   
   println("\nModifying Query Parameters:")
   sp.set("search", "MoonBit Compiler")
