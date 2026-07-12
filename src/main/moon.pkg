@@ -1,0 +1,7 @@
+import {
+  "Qlcdsba/uri/src/lib",
+}
+
+options(
+  "is-main": true,
+)

@@ -1,43 +1,36 @@
 // RFC 3986 URI parsing implementation
 
-///| Helper to find the index of a character before encountering any stop characters
+///|
+/// Helper to find the index of a character before encountering any stop characters
 fn find_char_before(s : String, c : Char, stop_chars : Array[Char]) -> Int {
-  let len = s.length()
-  for i = 0; i < len; i = i + 1 {
-    let curr = s[i].to_int()
-    if curr == c.to_int() {
-      return i
+  for idx, curr in s.iter2() {
+    if curr == c {
+      return idx
     }
-    // Check if it's a stop character
-    let mut is_stop = false
     for sc in stop_chars {
-      if curr == sc.to_int() {
-        is_stop = true
-        break
+      if curr == sc {
+        return -1
       }
-    }
-    if is_stop {
-      return -1
     }
   }
   -1
 }
 
-///| Helper to find the index of the first character from a list
+///|
+/// Helper to find the index of the first character from a list
 fn find_first_of(s : String, chars : Array[Char]) -> Int {
-  let len = s.length()
-  for i = 0; i < len; i = i + 1 {
-    let curr = s[i].to_int()
+  for idx, curr in s.iter2() {
     for c in chars {
-      if curr == c.to_int() {
-        return i
+      if curr == c {
+        return idx
       }
     }
   }
   -1
 }
 
-///| Validates if a string is a valid scheme (RFC 3986 Section 3.1)
+///|
+/// Validates if a string is a valid scheme (RFC 3986 Section 3.1)
 fn is_valid_scheme(s : String) -> Bool {
   let len = s.length()
   if len == 0 {
@@ -45,20 +38,26 @@ fn is_valid_scheme(s : String) -> Bool {
   }
   let first = s[0].to_int()
   // Must start with a letter
-  if !((first >= 'A'.to_int() && first <= 'Z'.to_int()) || (first >= 'a'.to_int() && first <= 'z'.to_int())) {
+  if !((first >= 'A'.to_int() && first <= 'Z'.to_int()) ||
+    (first >= 'a'.to_int() && first <= 'z'.to_int())) {
     return false
   }
   for i = 1; i < len; i = i + 1 {
     let c = s[i].to_int()
-    if !((c >= 'A'.to_int() && c <= 'Z'.to_int()) || (c >= 'a'.to_int() && c <= 'z'.to_int()) || (c >= '0'.to_int() && c <= '9'.to_int()) ||
-         c == '+'.to_int() || c == '-'.to_int() || c == '.'.to_int()) {
+    if !((c >= 'A'.to_int() && c <= 'Z'.to_int()) ||
+      (c >= 'a'.to_int() && c <= 'z'.to_int()) ||
+      (c >= '0'.to_int() && c <= '9'.to_int()) ||
+      c == '+'.to_int() ||
+      c == '-'.to_int() ||
+      c == '.'.to_int()) {
       return false
     }
   }
   true
 }
 
-///| Helper to parse a port string to an integer
+///|
+/// Helper to parse a port string to an integer
 fn parse_port(s : String) -> Result[Int, String] {
   let len = s.length()
   if len == 0 {
@@ -75,21 +74,22 @@ fn parse_port(s : String) -> Result[Int, String] {
   Ok(val)
 }
 
-///| Helper to parse the authority string (RFC 3986 Section 3.2)
+///|
+/// Helper to parse the authority string (RFC 3986 Section 3.2)
 fn parse_authority(s : String) -> Result[Authority, String] {
-  let mut userinfo : Option[String] = None
+  let mut userinfo : String? = None
   let mut host_port = s
-  
+
   // Find userinfo component
   let at_idx = index_of_char(s, '@')
   if at_idx >= 0 {
     userinfo = Some(s[0:at_idx].to_owned())
     host_port = s[at_idx + 1:].to_owned()
   }
-  
+
   let mut host = ""
-  let mut port : Option[Int] = None
-  
+  let mut port : Int? = None
+
   // Find host and port components
   if host_port.has_prefix("[") {
     // IPv6 literal host (bracketed)
@@ -98,7 +98,7 @@ fn parse_authority(s : String) -> Result[Authority, String] {
       return Err("Missing closing bracket in IPv6 host: " + host_port)
     }
     host = host_port[0:bracket_end + 1].to_owned()
-    
+
     let remaining = host_port[bracket_end + 1:].to_owned()
     if remaining.length() > 0 {
       if !remaining.has_prefix(":") {
@@ -126,20 +126,21 @@ fn parse_authority(s : String) -> Result[Authority, String] {
       host = host_port
     }
   }
-  
+
   if !is_valid_host(host) {
     return Err("Invalid host syntax: " + host)
   }
-  
+
   Ok(Authority::new(userinfo, host, port))
 }
 
-///| Parses a URI or URI-reference string into a URI struct (RFC 3986 Section 3)
+///|
+/// Parses a URI or URI-reference string into a URI struct (RFC 3986 Section 3)
 pub fn parse(s : String) -> Result[URI, String] {
   let mut remaining = s
-  
+
   // 1. Parse Scheme
-  let mut scheme : Option[String] = None
+  let mut scheme : String? = None
   let colon_idx = find_char_before(remaining, ':', ['/', '?', '#'])
   if colon_idx >= 0 {
     let sch_candidate = remaining[0:colon_idx].to_owned()
@@ -148,9 +149,9 @@ pub fn parse(s : String) -> Result[URI, String] {
       remaining = remaining[colon_idx + 1:].to_owned()
     }
   }
-  
+
   // 2. Parse Authority
-  let mut authority : Option[Authority] = None
+  let mut authority : Authority? = None
   if remaining.has_prefix("//") {
     remaining = remaining[2:].to_owned()
     let end_auth_idx = find_first_of(remaining, ['/', '?', '#'])
@@ -169,26 +170,32 @@ pub fn parse(s : String) -> Result[URI, String] {
     }
     authority = Some(parsed_auth)
   }
-  
+
   // 3. Parse Path, Query, Fragment
   let q_idx = index_of_char(remaining, '?')
   let f_idx = index_of_char(remaining, '#')
-  
+
   let (path, query, fragment) = if f_idx >= 0 {
     let frag = Some(remaining[f_idx + 1:].to_owned())
     let path_and_query = remaining[0:f_idx].to_owned()
     if q_idx >= 0 && q_idx < f_idx {
-      (path_and_query[0:q_idx].to_owned(), Some(path_and_query[q_idx + 1:].to_owned()), frag)
+      (
+        path_and_query[0:q_idx].to_owned(),
+        Some(path_and_query[q_idx + 1:].to_owned()),
+        frag,
+      )
     } else {
       (path_and_query, None, frag)
     }
+  } else if q_idx >= 0 {
+    (
+      remaining[0:q_idx].to_owned(),
+      Some(remaining[q_idx + 1:].to_owned()),
+      None,
+    )
   } else {
-    if q_idx >= 0 {
-      (remaining[0:q_idx].to_owned(), Some(remaining[q_idx + 1:].to_owned()), None)
-    } else {
-      (remaining, None, None)
-    }
+    (remaining, None, None)
   }
-  
+
   Ok(URI::new(scheme, authority, path, query, fragment))
 }

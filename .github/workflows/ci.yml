@@ -2,23 +2,39 @@ name: MoonURI CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
 
 jobs:
-  build_and_test:
+  check:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      - name: Setup MoonBit
-        uses: chawyehsu/setup-moonup@v1
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
 
-      - name: Run MoonBit Check
-        run: moon check
+      - name: Show Toolchain
+        run: moon version --all
 
-      - name: Run MoonBit Tests
+      - name: Update MoonBit
+        run: moon update
+
+      - name: moon fmt --deny-warn
+        run: moon check --fmt --deny-warn
+
+      - name: moon info --deny-warn
+        run: moon info --target all
+
+      - name: moon check
+        run: moon check --deny-warn
+
+      - name: moontest
         run: moon test

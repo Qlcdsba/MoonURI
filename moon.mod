@@ -1,0 +1,11 @@
+name = "Qlcdsba/uri"
+
+version = "0.1.0"
+
+readme = "README.md"
+
+repository = "https://github.com/Qlcdsba/MoonURI"
+
+license = "MIT"
+
+description = "RFC 3986 compliant URI parser, builder, resolver, and normalization library in MoonBit."

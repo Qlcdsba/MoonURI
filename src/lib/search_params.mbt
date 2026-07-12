@@ -1,11 +1,13 @@
 // URLSearchParams parser and formatter for URI Query Parameters
 
-///| Represents the query parameters of a URI
+///|
+/// Represents the query parameters of a URI
 pub struct URLSearchParams {
   mut params : Array[(String, String)]
 } derive(Debug, Eq)
 
-///| Parses a query string into a URLSearchParams struct
+///|
+/// Parses a query string into a URLSearchParams struct
 pub fn URLSearchParams::new(query_str : String) -> URLSearchParams {
   let params = Array::new()
   let mut s = query_str
@@ -13,9 +15,9 @@ pub fn URLSearchParams::new(query_str : String) -> URLSearchParams {
     s = s[1:].to_owned()
   }
   if s.length() == 0 {
-    return { params: params }
+    return { params, }
   }
-  
+
   for part in s.split("&") {
     let part_str = part.to_owned()
     if part_str.length() == 0 {
@@ -27,11 +29,11 @@ pub fn URLSearchParams::new(query_str : String) -> URLSearchParams {
     } else {
       (part_str, "")
     }
-    
+
     // Replace '+' with ' ' before percent decoding
     let key_processed = replace_plus_with_space(raw_key)
     let val_processed = replace_plus_with_space(raw_val)
-    
+
     let key = match percent_decode(key_processed) {
       Ok(k) => k
       Err(_) => key_processed
@@ -40,13 +42,14 @@ pub fn URLSearchParams::new(query_str : String) -> URLSearchParams {
       Ok(v) => v
       Err(_) => val_processed
     }
-    
+
     params.push((key, val))
   }
-  { params: params }
+  { params, }
 }
 
-///| Helper to replace '+' character with space
+///|
+/// Helper to replace '+' character with space
 fn replace_plus_with_space(s : String) -> String {
   let buf = StringBuilder::new()
   for c in s {
@@ -59,8 +62,9 @@ fn replace_plus_with_space(s : String) -> String {
   buf.to_string()
 }
 
-///| Gets the first value associated with the given key
-pub fn URLSearchParams::get(self : URLSearchParams, key : String) -> Option[String] {
+///|
+/// Gets the first value associated with the given key
+pub fn URLSearchParams::get(self : URLSearchParams, key : String) -> String? {
   for pair in self.params {
     let (k, v) = pair
     if k == key {
@@ -70,8 +74,12 @@ pub fn URLSearchParams::get(self : URLSearchParams, key : String) -> Option[Stri
   None
 }
 
-///| Gets all values associated with the given key
-pub fn URLSearchParams::get_all(self : URLSearchParams, key : String) -> Array[String] {
+///|
+/// Gets all values associated with the given key
+pub fn URLSearchParams::get_all(
+  self : URLSearchParams,
+  key : String,
+) -> Array[String] {
   let res = Array::new()
   for pair in self.params {
     let (k, v) = pair
@@ -82,7 +90,8 @@ pub fn URLSearchParams::get_all(self : URLSearchParams, key : String) -> Array[S
   res
 }
 
-///| Checks if the given key exists in the parameters
+///|
+/// Checks if the given key exists in the parameters
 pub fn URLSearchParams::has(self : URLSearchParams, key : String) -> Bool {
   for pair in self.params {
     let (k, _) = pair
@@ -93,14 +102,25 @@ pub fn URLSearchParams::has(self : URLSearchParams, key : String) -> Bool {
   false
 }
 
-///| Appends a new key-value pair to the parameters
-pub fn URLSearchParams::append(self : URLSearchParams, key : String, value : String) -> Unit {
+///|
+/// Appends a new key-value pair to the parameters
+pub fn URLSearchParams::append(
+  self : URLSearchParams,
+  key : String,
+  value : String,
+) -> Unit {
   self.params.push((key, value))
 }
 
 ///| Sets the value associated with the given key.
-///| If there are multiple existing values, all others are removed.
-pub fn URLSearchParams::set(self : URLSearchParams, key : String, value : String) -> Unit {
+
+///|
+/// If there are multiple existing values, all others are removed.
+pub fn URLSearchParams::set(
+  self : URLSearchParams,
+  key : String,
+  value : String,
+) -> Unit {
   let new_params = Array::new()
   let mut set_done = false
   for pair in self.params {
@@ -120,7 +140,8 @@ pub fn URLSearchParams::set(self : URLSearchParams, key : String, value : String
   self.params = new_params
 }
 
-///| Deletes all values associated with the given key
+///|
+/// Deletes all values associated with the given key
 pub fn URLSearchParams::delete(self : URLSearchParams, key : String) -> Unit {
   let new_params = Array::new()
   for pair in self.params {
@@ -132,7 +153,8 @@ pub fn URLSearchParams::delete(self : URLSearchParams, key : String) -> Unit {
   self.params = new_params
 }
 
-///| Converts the parameters into a query string representation (without leading '?')
+///|
+/// Converts the parameters into a query string representation (without leading '?')
 pub fn URLSearchParams::to_string(self : URLSearchParams) -> String {
   let buf = StringBuilder::new()
   let mut first = true
@@ -147,8 +169,4 @@ pub fn URLSearchParams::to_string(self : URLSearchParams) -> String {
     buf.write_string(percent_encode(v, true))
   }
   buf.to_string()
-}
-
-pub impl Show for URLSearchParams with output(self, logger) {
-  logger.write_string(self.to_string())
 }

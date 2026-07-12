@@ -1,4 +1,5 @@
 _build/
+pkg.generated.mbti
 check_output.txt
 *.log
 .DS_Store
