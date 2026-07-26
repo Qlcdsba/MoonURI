@@ -182,3 +182,26 @@ test "URI normalization syntax tests" {
     "http://User%3Apass@example.com:80/a/c?q=1%3D2#f%3Da",
   )
 }
+
+///|
+test "URI Template Level 1 expansion" {
+  let vars = {
+    "var": StringValue("value"),
+    "hello": StringValue("Hello World!"),
+    "list": ListValue(["red", "green", "blue"]),
+  }
+
+  // Simple string expansion
+  assert_eq(
+    expand_template("http://example.com/{var}", vars),
+    "http://example.com/value",
+  )
+  // Percent encoding
+  assert_eq(expand_template("/path/{hello}", vars), "/path/Hello%20World%21")
+  // List expansion (comma separated)
+  assert_eq(expand_template("/colors/{list}", vars), "/colors/red,green,blue")
+  // Missing variable
+  assert_eq(expand_template("/missing/{undef}", vars), "/missing/")
+  // Literal braces
+  assert_eq(expand_template("/literal/{", vars), "/literal/{")
+}
