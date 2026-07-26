@@ -34,11 +34,32 @@ fn normalize_percent_encoding(s : String) -> String {
         (h2 >= 65 && h2 <= 70) ||
         (h2 >= 97 && h2 <= 102)
       if is_h1_hex && is_h2_hex {
-        let n_h1 = if h1 >= 97 && h1 <= 102 { h1 - 32 } else { h1 }
-        let n_h2 = if h2 >= 97 && h2 <= 102 { h2 - 32 } else { h2 }
-        buf.write_char('%')
-        buf.write_char(Int::unsafe_to_char(n_h1))
-        buf.write_char(Int::unsafe_to_char(n_h2))
+        let val1 = if h1 >= 97 {
+          h1 - 97 + 10
+        } else if h1 >= 65 {
+          h1 - 65 + 10
+        } else {
+          h1 - 48
+        }
+        let val2 = if h2 >= 97 {
+          h2 - 97 + 10
+        } else if h2 >= 65 {
+          h2 - 65 + 10
+        } else {
+          h2 - 48
+        }
+        let byte_val = (val1 << 4) | val2
+        let char_val = Int::unsafe_to_char(byte_val)
+
+        if is_unreserved(char_val) {
+          buf.write_char(char_val)
+        } else {
+          let n_h1 = if h1 >= 97 && h1 <= 102 { h1 - 32 } else { h1 }
+          let n_h2 = if h2 >= 97 && h2 <= 102 { h2 - 32 } else { h2 }
+          buf.write_char('%')
+          buf.write_char(Int::unsafe_to_char(n_h1))
+          buf.write_char(Int::unsafe_to_char(n_h2))
+        }
         i = i + 3
       } else {
         buf.write_char(Int::unsafe_to_char(c))

@@ -30,13 +30,16 @@ jobs:
         run: moon version --all
 
       - name: moon fmt check
-        run: moon fmt --dry-run
+        run: moon fmt --check
         
       - name: moon info check
         run: moon info
         
       - name: moon check
         run: moon check --deny-warn
+
+      - name: moon build
+        run: moon build
 
       - name: moon test
         run: moon test

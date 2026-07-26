@@ -205,3 +205,28 @@ test "URI Template Level 1 expansion" {
   // Literal braces
   assert_eq(expand_template("/literal/{", vars), "/literal/{")
 }
+
+///|
+test "parse should reject invalid percent-encoding" {
+  // Invalid hex after %
+  assert_eq(parse("http://example.com/path%1G") is Err(_), true)
+  assert_eq(parse("http://example.com/path%") is Err(_), true)
+  assert_eq(parse("http://example.com/path%1") is Err(_), true)
+}
+
+///|
+test "parse should reject invalid UTF-8 in percent-encoding" {
+  // 0xC0 0x80 is an invalid overlong encoding in UTF-8
+  assert_eq(parse("http://example.com/path%C0%80") is Err(_), true)
+  // 0xFF is an invalid UTF-8 byte
+  assert_eq(parse("http://example.com/path%FF") is Err(_), true)
+}
+
+///|
+test "normalize should decode unreserved characters" {
+  // %41 is 'A', %7e is '~', %2D is '-', %2e is '.', %5F is '_'
+  // These are unreserved characters and should be decoded.
+  let uri = parse("http://example.com/%41%7e%2D%2e%5F%21").unwrap()
+  let normalized = uri.normalize()
+  assert_eq(normalized.to_string(), "http://example.com/A~-._%21")
+}

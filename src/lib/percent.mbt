@@ -160,6 +160,9 @@ fn utf8_bytes_to_string(bytes : Array[Int]) -> Result[String, String] {
         return Err("Invalid UTF-8 continuation byte in 2-byte sequence")
       }
       let code = ((b1 & 0x1F) << 6) | (b2 & 0x3F)
+      if code < 0x80 {
+        return Err("Overlong 2-byte UTF-8 sequence")
+      }
       buf.write_char(Int::unsafe_to_char(code))
       i += 2
     } else if (b1 & 0xF0) == 0xE0 {
@@ -172,6 +175,9 @@ fn utf8_bytes_to_string(bytes : Array[Int]) -> Result[String, String] {
         return Err("Invalid UTF-8 continuation byte in 3-byte sequence")
       }
       let code = ((b1 & 0x0F) << 12) | ((b2 & 0x3F) << 6) | (b3 & 0x3F)
+      if code < 0x800 {
+        return Err("Overlong 3-byte UTF-8 sequence")
+      }
       buf.write_char(Int::unsafe_to_char(code))
       i += 3
     } else if (b1 & 0xF8) == 0xF0 {
@@ -188,6 +194,9 @@ fn utf8_bytes_to_string(bytes : Array[Int]) -> Result[String, String] {
         ((b2 & 0x3F) << 12) |
         ((b3 & 0x3F) << 6) |
         (b4 & 0x3F)
+      if code < 0x10000 || code > 0x10FFFF {
+        return Err("Invalid or overlong 4-byte UTF-8 sequence")
+      }
       buf.write_char(Int::unsafe_to_char(code))
       i += 4
     } else {

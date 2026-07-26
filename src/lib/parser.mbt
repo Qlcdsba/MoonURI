@@ -197,5 +197,36 @@ pub fn parse(s : String) -> Result[URI, String] {
     (remaining, None, None)
   }
 
-  Ok(URI::new(scheme, authority, path, query, fragment))
+  let uri = URI::new(scheme, authority, path, query, fragment)
+
+  // 4. Validate percent-encoding and UTF-8 compliance for all components
+  let mut check_err = None
+  fn check(c : String?) {
+    match c {
+      Some(s) =>
+        match percent_decode(s) {
+          Err(e) => check_err = Some(e)
+          _ => ()
+        }
+      None => ()
+    }
+  }
+
+  match authority {
+    Some(auth) => {
+      check(auth.userinfo)
+      check(Some(auth.host))
+    }
+    None => ()
+  }
+  check(Some(path))
+  check(query)
+  check(fragment)
+
+  match check_err {
+    Some(e) => return Err("Invalid percent-encoding or UTF-8 sequence: " + e)
+    None => ()
+  }
+
+  Ok(uri)
 }
