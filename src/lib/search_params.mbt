@@ -49,6 +49,100 @@ pub fn URLSearchParams::new(query_str : String) -> URLSearchParams {
 }
 
 ///|
+/// Creates parameters from already decoded key-value pairs.
+pub fn URLSearchParams::from_pairs(
+  pairs : Array[(String, String)],
+) -> URLSearchParams {
+  { params: pairs }
+}
+
+///|
+/// Returns the number of stored pairs, including duplicate keys.
+pub fn URLSearchParams::size(self : URLSearchParams) -> Int {
+  self.params.length()
+}
+
+///|
+/// Returns keys in insertion order, including duplicates.
+pub fn URLSearchParams::keys(self : URLSearchParams) -> Array[String] {
+  let result = Array::new()
+  for pair in self.params {
+    let (key, _) = pair
+    result.push(key)
+  }
+  result
+}
+
+///|
+/// Returns values in insertion order.
+pub fn URLSearchParams::values(self : URLSearchParams) -> Array[String] {
+  let result = Array::new()
+  for pair in self.params {
+    let (_, value) = pair
+    result.push(value)
+  }
+  result
+}
+
+///|
+/// Sorts pairs by key while preserving duplicate-key order.
+pub fn URLSearchParams::sort(self : URLSearchParams) -> Unit {
+  let sorted : Array[(String, String)] = Array::new()
+  for pair in self.params {
+    let mut inserted = false
+    let mut index = 0
+    while index < sorted.length() {
+      if compare_query_keys(pair.0, sorted[index].0) < 0 {
+        sorted.insert(index, pair)
+        inserted = true
+        break
+      }
+      index += 1
+    }
+    if !inserted {
+      sorted.push(pair)
+    }
+  }
+  self.params = sorted
+}
+
+///|
+/// Compares keys by code unit, independent of locale or backend collation.
+fn compare_query_keys(left : String, right : String) -> Int {
+  let limit = if left.length() < right.length() {
+    left.length()
+  } else {
+    right.length()
+  }
+  for i = 0; i < limit; i = i + 1 {
+    if left[i] < right[i] {
+      return -1
+    }
+    if left[i] > right[i] {
+      return 1
+    }
+  }
+  if left.length() < right.length() {
+    -1
+  } else if left.length() > right.length() {
+    1
+  } else {
+    0
+  }
+}
+
+///|
+/// Formats the parameters with a leading question mark when non-empty.
+pub fn URLSearchParams::to_query_string(self : URLSearchParams) -> String {
+  let encoded = self.to_string()
+  if encoded == "" {
+    ""
+  } else {
+    "?" + encoded
+  }
+}
+
+///|
 /// Helper to replace '+' character with space
 fn replace_plus_with_space(s : String) -> String {
   let buf = StringBuilder::new()

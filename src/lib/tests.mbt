@@ -220,6 +220,15 @@ test "parse should reject invalid UTF-8 in percent-encoding" {
   assert_eq(parse("http://example.com/path%C0%80") is Err(_), true)
   // 0xFF is an invalid UTF-8 byte
   assert_eq(parse("http://example.com/path%FF") is Err(_), true)
+  assert_eq(parse("http://example.com/path%ED%A0%80") is Err(_), true)
+}
+
+///|
+/// A colon in the first relative path segment cannot be mistaken for an invalid scheme.
+test "parse should reject invalid URI schemes" {
+  assert_eq(parse("1http://example.com") is Err(_), true)
+  assert_eq(parse("-http://example.com") is Err(_), true)
+  assert_eq(parse("http+unix://example.com") is Ok(_), true)
 }
 
 ///|
@@ -229,4 +238,155 @@ test "normalize should decode unreserved characters" {
   let uri = parse("http://example.com/%41%7e%2D%2e%5F%21").unwrap()
   let normalized = uri.normalize()
   assert_eq(normalized.to_string(), "http://example.com/A~-._%21")
+}
+
+///|
+/// RFC 3986 Section 5.4 abnormal references must not escape the authority.
+test "URI relative resolution abnormal references" {
+  let base = parse("http://a/b/c/d;p?q").unwrap()
+  let cases = [
+    ("../../../g", "http://a/g"),
+    ("../../../../g", "http://a/g"),
+    ("/./g", "http://a/g"),
+    ("/../g", "http://a/g"),
+    ("g.", "http://a/b/c/g."),
+    (".g", "http://a/b/c/.g"),
+    ("g..", "http://a/b/c/g.."),
+    ("..g", "http://a/b/c/..g"),
+    ("./../g", "http://a/b/g"),
+    ("./g/.", "http://a/b/c/g/"),
+    ("g/./h", "http://a/b/c/g/h"),
+    ("g/../h", "http://a/b/c/h"),
+    ("g;x=1/./y", "http://a/b/c/g;x=1/y"),
+    ("g;x=1/../y", "http://a/b/c/y"),
+    ("g?y/./x", "http://a/b/c/g?y/./x"),
+    ("g#s/./x", "http://a/b/c/g#s/./x"),
+  ]
+  for pair in cases {
+    let (reference, expected) = pair
+    assert_eq(base.resolve_string(reference).unwrap().to_string(), expected)
+  }
+}
+
+///|
+/// Percent normalization applies to the host as well as userinfo and paths.
+test "normalize host percent-encoded unreserved characters" {
+  let uri = parse("HTTP://EX%41MPLE.com/%7e?q=%41#%7e").unwrap()
+  assert_eq(uri.normalize().to_string(), "http://example.com/~?q=A#~")
+}
+
+///|
+/// Realistic application URLs exercise Unicode, credentials, ports, and query duplicates.
+test "application URL inspection and redaction" {
+  let uri = parse(
+    "HTTPS://alice:secret@[2001:db8::1]:8443/api/v1/items/%E4%B8%AD?tag=moon&tag=bit#docs",
+  ).unwrap()
+  assert_true(uri.kind() is Absolute)
+  assert_eq(uri.is_absolute(), true)
+  assert_eq(uri.is_http_url(), true)
+  assert_eq(uri.is_loopback(), false)
+  assert_true(uri.origin() is Some(_))
+  assert_eq(
+    uri.redacted(),
+    "HTTPS://[2001:db8::1]:8443/api/v1/items/%E4%B8%AD?tag=moon&tag=bit",
+  )
+  assert_eq(uri.request_target(), "/api/v1/items/%E4%B8%AD?tag=moon&tag=bit")
+  assert_true(uri.path_segments() == ["api", "v1", "items", "%E4%B8%AD"])
+  assert_true(
+    uri.decode_path_segments().unwrap() == ["api", "v1", "items", "中"],
+  )
+}
+
+///|
+/// All reference forms used by routers and link resolvers remain distinguishable.
+test "URI reference classification boundaries" {
+  assert_true(parse("https://example.com").unwrap().kind() is Absolute)
+  assert_true(parse("//example.com/path").unwrap().kind() is NetworkPath)
+  assert_true(parse("/path").unwrap().kind() is AbsolutePath)
+  assert_true(parse("path/to").unwrap().kind() is RelativePath)
+  assert_true(parse("?only=query").unwrap().kind() is Empty)
+  assert_true(parse("").unwrap().kind() is Empty)
+}
+
+///|
+/// Credentials and fragments are removed independently for safe observability.
+test "safe logging and cache key behavior" {
+  let uri = parse("HTTP://user:pass@EXAMPLE.COM:80/a/../b?x=%41#section").unwrap()
+  assert_eq(
+    uri.without_userinfo().to_string(),
+    "HTTP://EXAMPLE.COM:80/a/../b?x=%41#section",
+  )
+  assert_eq(
+    uri.without_fragment().to_string(),
+    "HTTP://user:pass@EXAMPLE.COM:80/a/../b?x=%41",
+  )
+  assert_eq(uri.cache_key(), "http://user:pass@example.com:80/b?x=A")
+}
+
+///|
+/// Query mutation preserves duplicate-key semantics and stable ordering.
+test "query helpers and stable sorting" {
+  let uri = parse("https://example.com/search?z=9&a=1&a=2").unwrap()
+  assert_true(query_values(uri.query.unwrap(), "a") == ["1", "2"])
+  assert_eq(
+    uri.set_query_param("page", "2").to_string(),
+    "https://example.com/search?z=9&a=1&a=2&page=2",
+  )
+  assert_eq(
+    uri.remove_query_param("a").to_string(),
+    "https://example.com/search?z=9",
+  )
+  assert_eq(
+    uri.sorted_query().to_string(),
+    "https://example.com/search?a=1&a=2&z=9",
+  )
+  assert_eq(canonical_query("z=9&a=1&a=2"), "a=1&a=2&z=9")
+  assert_true(first_non_empty("id=&id=42", "id") is Some("42"))
+}
+
+///|
+/// SearchParams edge cases cover empty values, duplicate keys, and encoding.
+test "URLSearchParams edge matrix" {
+  let p = URLSearchParams::new("?a&b=&a=3&space=hello+world&encoded=%E4%B8%AD")
+  assert_eq(p.size(), 5)
+  assert_true(p.get("a") is Some(""))
+  assert_true(p.get_all("a") == ["", "3"])
+  assert_true(p.keys() == ["a", "b", "a", "space", "encoded"])
+  assert_true(p.values() == ["", "", "3", "hello world", "中"])
+  assert_eq(
+    p.to_query_string(),
+    "?a=&b=&a=3&space=hello%20world&encoded=%E4%B8%AD",
+  )
+  p.sort()
+  assert_eq(p.to_string(), "a=&a=3&b=&encoded=%E4%B8%AD&space=hello%20world")
+}
+
+///|
+/// Ports and authorities reject malformed or unsafe boundary spellings.
+test "authority boundary validation" {
+  assert_true(parse("http:///missing-host") is Err(_))
+  assert_true(parse("http://example.com:") is Err(_))
+  assert_true(parse("http://example.com:65536") is Err(_))
+  assert_true(parse("http://example.com:65535") is Ok(_))
+  assert_true(parse("http://[::1]:0/") is Ok(_))
+  assert_true(classify_host("127.0.0.1") is IPv4)
+  assert_true(classify_host("[::1]") is IPv6)
+  assert_true(classify_host("example.com") is RegisteredName)
+  assert_eq(is_loopback_host("localhost"), true)
+  assert_eq(is_loopback_host("example.com"), false)
+}
+
+///|
+/// RFC 3986-style corpus cases provide regression coverage beyond happy paths.
+test "URI corpus regression cases" {
+  let cases = [
+    "mailto:John.Doe@example.com", "urn:oasis:names:specification:docbook:dtd:xml:4.1.2",
+    "http://example.com/a%2Fb", "https://example.com:443/", "//cdn.example.com/assets/app.js",
+    "/a/b/../c", "a/./b?x=1#frag", "?q=hello%20world", "#fragment-only", "http://[2001:db8::8a2e:370:7334]/",
+  ]
+  for value in cases {
+    let parsed = parse(value).unwrap()
+    assert_eq(parsed.is_valid(), true)
+    assert_true(parse(parsed.to_string()) is Ok(_))
+  }
 }

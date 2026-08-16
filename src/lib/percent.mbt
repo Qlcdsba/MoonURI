@@ -178,6 +178,9 @@ fn utf8_bytes_to_string(bytes : Array[Int]) -> Result[String, String] {
       if code < 0x800 {
         return Err("Overlong 3-byte UTF-8 sequence")
       }
+      if code >= 0xD800 && code <= 0xDFFF {
+        return Err("UTF-8 sequence decodes to a surrogate")
+      }
       buf.write_char(Int::unsafe_to_char(code))
       i += 3
     } else if (b1 & 0xF8) == 0xF0 {

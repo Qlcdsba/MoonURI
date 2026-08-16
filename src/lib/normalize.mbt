@@ -87,7 +87,7 @@ pub fn URI::normalize(self : URI) -> URI {
         Some(u) => Some(normalize_percent_encoding(u))
         None => None
       }
-      let n_host = to_lowercase(auth.host)
+      let n_host = to_lowercase(normalize_percent_encoding(auth.host))
       Some(Authority::new(n_userinfo, n_host, auth.port))
     }
     None => None

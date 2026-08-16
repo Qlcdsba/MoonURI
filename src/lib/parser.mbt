@@ -70,6 +70,9 @@ fn parse_port(s : String) -> Result[Int, String] {
       return Err("Invalid digit in port: " + s)
     }
     val = val * 10 + (c - 48)
+    if val > 65535 {
+      return Err("Port number is greater than 65535")
+    }
   }
   Ok(val)
 }
@@ -127,6 +130,9 @@ fn parse_authority(s : String) -> Result[Authority, String] {
     }
   }
 
+  if host == "" {
+    return Err("Authority host cannot be empty")
+  }
   if !is_valid_host(host) {
     return Err("Invalid host syntax: " + host)
   }
@@ -147,6 +153,8 @@ pub fn parse(s : String) -> Result[URI, String] {
     if is_valid_scheme(sch_candidate) {
       scheme = Some(sch_candidate)
       remaining = remaining[colon_idx + 1:].to_owned()
+    } else {
+      return Err("Invalid URI scheme: " + sch_candidate)
     }
   }
 

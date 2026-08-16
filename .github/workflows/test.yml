@@ -24,7 +24,7 @@ jobs:
       - name: Setup MoonBit
         uses: moonbitlang/setup-moonbit@v1
         with:
-          moonbit-version: 0.10.3
+          moonbit-version: 0.10.7
 
       - name: Show MoonBit Version
         run: moon version --all
@@ -42,4 +42,10 @@ jobs:
         run: moon build
 
       - name: moon test
-        run: moon test
+        run: moon test --deny-warn
+
+      - name: runnable example
+        run: moon run src/main
+
+      - name: benchmark smoke test
+        run: moon run benchmarks

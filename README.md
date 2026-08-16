@@ -1,87 +1,81 @@
 # MoonURI
 
-MoonURI 是一个用 MoonBit 编写的严格遵守 RFC 3986 标准的 URI/URL 处理基础库，提供解析、构造、规范化、相对引用解析和查询参数处理能力，并且内置了对 RFC 6570（URI Template）的扩展支持。
+MoonURI 是一个以 MoonBit 为主要实现语言的 RFC 3986 URI/URI-reference 基础库。它面向 HTTP 客户端、路由器、Wasm 服务和缓存层，提供严格解析、百分号编码、IPv4/IPv6 校验、相对引用解析、规范化、查询参数和 RFC 6570 Level 1 URI Template 扩展。
 
-> **关于开发历史（集中提交说明）**
-> 本项目的主体核心逻辑此前在本地环境与私有仓库中经历了较长时间的迭代开发。为了在 OSC 2026 大赛中呈现最整洁规范的开源提交流程，我们在代码最终定稿、补充了标准 CI 与文档后，将代码打包并集中推送到当前的公开比赛仓库中，因此出现了秒级的集中提交记录。这是为了保持公开仓库提交树整洁而进行的整理动作。
+## 项目边界
 
-## 项目特点
+MoonURI 处理 URI 的语法与纯函数式组件操作，不执行 DNS、网络请求、重定向或 SSRF 防护。应用程序仍需自行配置网络 allow-list、重定向策略和证书校验。`URI::validation_issues`、`is_http_url`、`is_loopback` 和 `redacted` 用于帮助应用在边界处做明确决策。
 
-- **严格的合规性校验**: 强校验所有的 URI 组件，拒绝非法百分号序列（如 `%1G`）及非法的/过长的 UTF-8 编码字节流。
-- **完整的 URI 规范化**: 支持百分号编码的规范化及非保留字符（Unreserved Characters）的完整解码与还原。
-- **灵活的拓展**: 完整支持 IPv4、IPv6 与 IPv6 literal 主机校验，支持 RFC 3986 相对引用解析，以及 URI 模板扩展。
-- **浏览器级别的查询参数**: 提供对标 Web API 的 `URLSearchParams` 查询参数接口。
+## 特性
+
+- RFC 3986 scheme、authority、path、query、fragment 解析与重建。
+- 严格 percent-encoding 和 UTF-8 校验；拒绝截断、非法十六进制、过长端口和非法主机。
+- IPv4、IPv6 literal、registered name 校验。
+- RFC 3986 Section 5 相对 URI 解析和 dot-segment 清理。
+- RFC 3986 Section 6 大小写与百分号规范化、缓存键和请求目标生成。
+- `URLSearchParams`：重复键、空值、`+`、编码、排序、增删改查。
+- RFC 6570 Level 1 简单变量与列表展开。
+- 无运行时网络依赖，适合 Wasm 和嵌入式 MoonBit 程序。
 
 ## 安装
-
-在你的 MoonBit 项目中运行以下命令添加依赖：
 
 ```bash
 moon add Qlcdsba/uri
 ```
 
-然后在你的 `moon.pkg.json` 中配置导入：
+在包配置中导入：
 
-```json
-{
-  "import": [
-    "Qlcdsba/uri"
-  ]
-}
-```
-
-## 核心 API 使用示例
-
-### 1. 解析与构造 URI
 ```moonbit
-let uri_str = "http://user:pass@example.com:8080/path/to/resource?query=1#fragment"
-match @uri.parse(uri_str) {
-  Ok(uri) => {
-    println(uri.scheme) // Some("http")
-    println(uri.path)   // "/path/to/resource"
-    println(uri.to_string())
-  }
-  Err(e) => println("Failed to parse: " + e)
-}
+import { "Qlcdsba/uri/src/lib" }
 ```
 
-### 2. URI 规范化 (Normalization)
-严格依据 RFC 3986 规范，对非保留字符自动解码：
+## 最小示例
+
 ```moonbit
-let uri = @uri.parse("HTTP://User%3apass@EXAMPLE.COM:80/%41%7e%2D%2e%5F%21").unwrap()
-let normalized = uri.normalize()
-println(normalized.to_string()) 
-// 预期输出: "http://User%3Apass@example.com:80/A~-._%21"
+let uri = @lib.parse("https://example.com/api?q=moon#docs").unwrap()
+println(uri.request_target()) // /api?q=moon
+println(uri.redacted())       // https://example.com/api?q=moon
+
+let params = @lib.URLSearchParams::new(uri.query.unwrap_or(""))
+params.append("page", "1")
+println(params.to_query_string())
 ```
 
-### 3. URI 模板扩展 (RFC 6570)
-```moonbit
-let vars = {
-  "var": @uri.StringValue("value"),
-  "hello": @uri.StringValue("Hello World!"),
-}
-let expanded = @uri.expand_template("http://example.com/path/{hello}", vars)
-println(expanded) 
-// 预期输出: "http://example.com/path/Hello%20World%21"
+预期输出：
+
+```text
+/api?q=moon
+https://example.com/api?q=moon
+?q=moon&page=1
 ```
 
-## 本地开发与测试
-
-运行格式化与代码检查（由 CI 流程 `moon build` 和 `moon fmt --check` 严格约束）：
+可运行示例位于 `src/main/main.mbt`，运行：
 
 ```bash
-moon check
+moon run src/main
+```
+
+## 开发与复现
+
+在仓库根目录执行：
+
+```bash
+moon version --all
+moon fmt --check
+moon info
+moon check --deny-warn
+moon build
 moon test
 ```
 
-## CI 流程
+持续集成还会运行 `moon run src/main` 和 `moon run benchmarks`，确保示例输出与基准入口可执行。
 
-本仓库已配置严谨的 GitHub Actions 工作流，包含以下关键节点：
-- **`moon fmt --check`**: 阻止代码格式漂移。
-- **`moon info`**: 生成包信息。
-- **`moon build` & `moon check`**: 验证编译正确性。
-- **`moon test`**: 执行所有包含 RFC 3986 异常向量/非法字符在内的单元测试。
+`benchmarks/` 包含脱敏的真实 URL 形态数据、测试口径和本地基准入口。基准结果与 CPU、MoonBit 版本有关，不作为跨机器绝对性能承诺。
 
-## 许可
+## 开源合规
 
-本项目采用 MIT License。
+本项目采用 MIT License，完整文本见根目录 `LICENSE`。实现为独立 MoonBit 代码；RFC 文本仅作为协议依据，不复制第三方实现代码。测试 URL 均为公开文档中的非凭据示例或脱敏形态，不包含个人数据、访问令牌或商业数据。
+
+## 贡献与发布
+
+提交应描述用户可观察的功能、修复或文档变化。合并前必须通过格式检查、`moon check --deny-warn`、构建和测试。发布 mooncakes.io 前请确认 `moon.mod` 的模块命名空间、版本、README、LICENSE 与公开仓库状态一致，并先在本地完成 `moon info` 差异复核。
