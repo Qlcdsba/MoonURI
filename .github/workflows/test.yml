@@ -22,9 +22,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup MoonBit
-        uses: moonbitlang/setup-moonbit@v1
+        uses: hustcer/setup-moonbit@v1
         with:
-          moonbit-version: 0.10.7
+          version: 0.10.7
 
       - name: Show MoonBit Version
         run: moon version --all
