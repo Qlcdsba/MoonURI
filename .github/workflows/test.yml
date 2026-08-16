@@ -17,14 +17,16 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           persist-credentials: false
 
       - name: Setup MoonBit
         uses: hustcer/setup-moonbit@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          version: 0.10.7
+          version: "0.10.7+bc794d341"
 
       - name: Show MoonBit Version
         run: moon version --all
